@@ -546,7 +546,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 	function add_files_from_path( $base_path, $files, $content_dir ) {
 		if ( is_file( $base_path ) ) {
 			$relative = $this->relative_to_content_dir( $base_path, $content_dir );
-			if ( $relative ) {
+			if ( $relative && ! $this->is_ignored_relative_path( $relative ) ) {
 				$files[$relative] = (int) @filesize( $base_path );
 			}
 			return $files;
@@ -564,6 +564,9 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			$path = wp_normalize_path( $path );
 			$relative = $this->relative_to_content_dir( $path, $content_dir );
 			if ( ! $relative ) {
+				continue;
+			}
+			if ( $this->is_ignored_relative_path( $relative ) ) {
 				continue;
 			}
 			$files[$relative] = (int) $info->getSize();
@@ -597,9 +600,17 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 		return $path;
 	}
 
+	function is_ignored_relative_path( $relative ) {
+		$relative = wp_normalize_path( $relative );
+		return (bool) preg_match( '#(^|/)\.git(/|$)#', $relative );
+	}
+
 	function read_files( $file_chunk ) {
 		$files_data = array();
 		foreach ( $file_chunk as $relative ) {
+			if ( $this->is_ignored_relative_path( $relative ) ) {
+				continue;
+			}
 			$path = $this->safe_content_path( $relative );
 			if ( ! $path || ! is_file( $path ) ) {
 				continue;
@@ -623,6 +634,9 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 		$size = 0;
 
 		foreach ( $files_data as $relative => $payload ) {
+			if ( $this->is_ignored_relative_path( $relative ) ) {
+				continue;
+			}
 			$path = $this->safe_content_path( $relative );
 			if ( ! $path ) {
 				$errors[] = sprintf( __( 'Invalid file path: %s', 'wp-sync-db' ), $relative );
