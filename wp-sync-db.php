@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: WP Sync DB — Plugins & Themes Sync
+Plugin Name: WP Sync DB - Plugins & Themes Sync
 Description: Sync database, media, plugins, and themes between WordPress installs.
 Author: Sergey Kovalyov
 Version: 1.8.0
