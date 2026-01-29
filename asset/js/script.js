@@ -585,7 +585,8 @@ var execute_next_step;
       var multiselect = $(this).parents('.select-wrap').children(
         '.multiselect');
       $(multiselect).focus();
-      $('option', multiselect).attr('selected', 1);
+      $('option', multiselect).prop('selected', true);
+      $(multiselect).trigger('change');
     });
 
     // deselect all tables
@@ -593,7 +594,8 @@ var execute_next_step;
       var multiselect = $(this).parents('.select-wrap').children(
         '.multiselect');
       $(multiselect).focus();
-      $('option', multiselect).removeAttr('selected');
+      $('option', multiselect).prop('selected', false);
+      $(multiselect).trigger('change');
     });
 
     // invert table selection
@@ -602,8 +604,9 @@ var execute_next_step;
         '.multiselect');
       $(multiselect).focus();
       $('option', multiselect).each(function() {
-        $(this).attr('selected', !$(this).attr('selected'));
+        $(this).prop('selected', !$(this).prop('selected'));
       });
+      $(multiselect).trigger('change');
     });
 
     // on option select hide all "advanced" option divs and show the correct div
