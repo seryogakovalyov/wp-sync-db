@@ -1,10 +1,22 @@
 {
-  "name": "pixelstudio/wp-sync-db",
-  "description": "WordPress plugin to sync database between different installs",
-  "keywords": ["wordpress", "plugin", "database", "sync"],
+  "name": "seryogakovalyov/wp-sync-db",
+  "description": "WordPress plugin to sync database, media, plugins, and themes between installs",
+  "keywords": [
+    "wordpress",
+    "plugin",
+    "database",
+    "sync",
+    "plugins",
+    "themes",
+    "media"
+  ],
   "type": "wordpress-plugin",
-  "homepage": "https://github.com/hrsetyono/wp-sync-db/",
+  "homepage": "https://github.com/seryogakovalyov/wp-sync-db",
   "authors": [
+    {
+      "name": "Sergey Kovalyov",
+      "homepage": "https://github.com/seryogakovalyov"
+    },
     {
       "name": "Sean Lang",
       "email": "slang800@gmail.com",
@@ -23,5 +35,6 @@
   },
   "scripts": {
     "test": "./test.sh"
-  }
+  },
+  "version": "1.8.0"
 }

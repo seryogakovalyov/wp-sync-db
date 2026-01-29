@@ -1,15 +1,15 @@
 <?php
 /*
-Plugin Name: WP Sync DB
-Description: Sync database between different installs.
-Author: Pixel Studio
-Version: 1.7.1
-Author URI: https://pixelstudio.id
-Plugin URI: http://github.com/hrsetyono/wp-sync-db
+Plugin Name: WP Sync DB — Plugins & Themes Sync
+Description: Sync database, media, plugins, and themes between WordPress installs.
+Author: Sergey Kovalyov
+Version: 1.8.0
+Author URI: https://github.com/seryogakovalyov
+Plugin URI: https://github.com/seryogakovalyov/wp-sync-db
 Network: True
 */
 
-$GLOBALS['wpsdb_meta']['wp-sync-db']['version'] = '1.7';
+$GLOBALS['wpsdb_meta']['wp-sync-db']['version'] = '1.8';
 $GLOBALS['wpsdb_meta']['wp-sync-db']['folder'] = basename( plugin_dir_path( __FILE__ ) );
 
 define( 'WPSDB_ROOT', plugin_dir_url(__FILE__) );
@@ -50,3 +50,4 @@ add_action( 'init', 'wp_sync_db_init' );
 
 require_once 'module-cli/_load.php';
 require_once 'module-media-files/_load.php';
+require_once 'module-plugins-themes/_load.php';

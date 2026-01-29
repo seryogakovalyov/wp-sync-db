@@ -1270,3 +1270,80 @@ body.mp6 #overlay {
 body.mp6 .migration-progress-ajax-spinner {
   top: 20px;
 }
+
+/* Plugins & Themes Sync */
+.wpsdb .plugins-themes-options .plugins-themes-hint {
+  margin: 0 0 10px 0;
+  color: #666;
+}
+
+.wpsdb .plugins-themes-options .plugins-themes-block {
+  margin: 10px 0 20px 0;
+}
+
+.wpsdb .plugins-themes-options .plugins-themes-toolbar {
+  margin: 6px 0 8px 0;
+}
+
+.wpsdb .plugins-themes-options .pt-source-target {
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.wpsdb .plugins-themes-options .pt-source-target-divider {
+  margin: 0 6px;
+}
+
+.wpsdb .plugins-themes-table {
+  width: 100%;
+}
+
+.wpsdb .plugins-themes-table th,
+.wpsdb .plugins-themes-table td {
+  padding: 6px 8px;
+  vertical-align: top;
+}
+
+.wpsdb .plugins-themes-table .pt-col-select {
+  width: 70px;
+}
+
+.wpsdb .plugins-themes-table .pt-name {
+  font-weight: 600;
+}
+
+.wpsdb .plugins-themes-table .pt-slug {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #777;
+}
+
+.wpsdb .plugins-themes-table .pt-status {
+  font-weight: 600;
+}
+
+.wpsdb .plugins-themes-table .pt-status-upgrade {
+  color: #0b6b2f;
+}
+
+.wpsdb .plugins-themes-table .pt-status-downgrade {
+  color: #b32d2e;
+}
+
+.wpsdb .plugins-themes-table .pt-status-same {
+  color: #444;
+}
+
+.wpsdb .plugins-themes-table .pt-status-missing-target {
+  color: #b07a00;
+}
+
+.wpsdb .plugins-themes-table .pt-status-missing-source {
+  color: #888;
+}
+
+.wpsdb .plugins-themes-table .pt-empty {
+  text-align: center;
+  color: #777;
+}

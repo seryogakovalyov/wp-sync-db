@@ -563,7 +563,9 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 		if ( ! $tmpfname )
 			return new WP_Error('http_no_file', __('Could not create Temporary file.'));
 
-		$response = wp_remote_get( $url, array( 'timeout' => $timeout, 'stream' => true, 'filename' => $tmpfname, 'reject_unsafe_urls' => false ) );
+		$sslverify = ( isset( $this->settings['verify_ssl'] ) && $this->settings['verify_ssl'] == 1 ) ? true : false;
+		$sslverify = apply_filters( 'wpsdb_media_files_sslverify', $sslverify, $url );
+		$response = wp_remote_get( $url, array( 'timeout' => $timeout, 'stream' => true, 'filename' => $tmpfname, 'reject_unsafe_urls' => false, 'sslverify' => $sslverify ) );
 
 		if ( is_wp_error( $response ) ) {
 			unlink( $tmpfname );

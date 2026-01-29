@@ -480,6 +480,12 @@ class WPSDB extends WPSDB_Base {
     global $wpdb;
     $alter_table_name = $this->get_alter_table_name();
     $sql = '';
+
+    $table_exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $alter_table_name ) );
+    if ( empty( $table_exists ) ) {
+      return array();
+    }
+
     $alter_queries = $wpdb->get_results( "SELECT * FROM `{$alter_table_name}`", ARRAY_A );
     if( ! empty( $alter_queries ) ) {
       foreach( $alter_queries as $alter_query ) {
@@ -494,6 +500,12 @@ class WPSDB extends WPSDB_Base {
     $this->check_ajax_referer( 'finalize-migration' );
     global $wpdb;
     $return = '';
+
+    $this->form_data = $this->parse_migration_form_data( $_POST['form_data'] );
+    if ( isset( $this->form_data['table_migrate_option'] ) && 'migrate_none' === $this->form_data['table_migrate_option'] ) {
+      $result = $this->end_ajax();
+      return $result;
+    }
     if ( $_POST['intent'] == 'pull' ) {
       $return = $this->finalize_migration();
     }
@@ -524,11 +536,21 @@ class WPSDB extends WPSDB_Base {
   function respond_to_remote_finalize_migration() {
     $filtered_post = $this->filter_post_elements( $_POST, array( 'action', 'intent', 'url', 'key', 'form_data', 'prefix', 'type', 'location', 'tables', 'temp_prefix' ) );
     if ( ! $this->verify_signature( $filtered_post, $this->settings['key'] ) ) {
-      $error_msg = $this->invalid_content_verification_error . ' (#123)';
-      $this->log_error( $error_msg, $filtered_post );
-      $result = $this->end_ajax( $error_msg );
+      $return = array();
+      $return['error'] = 1;
+      $return['message'] = $this->invalid_content_verification_error . ' (#120)';
+      $this->log_error( $this->invalid_content_verification_error . ' (#120)', $filtered_post );
+      $result = $this->end_ajax( serialize( $return ) );
       return $result;
     }
+
+    $form_data = $this->parse_migration_form_data( $_POST['form_data'] );
+    if ( isset( $form_data['table_migrate_option'] ) && 'migrate_none' === $form_data['table_migrate_option'] ) {
+      $return = array( 'error' => 0 );
+      $result = $this->end_ajax( serialize( $return ) );
+      return $result;
+    }
+
     $return = $this->finalize_migration();
     $result = $this->end_ajax( $return );
     return $result;
@@ -680,6 +702,12 @@ class WPSDB extends WPSDB_Base {
     global $wpdb;
 
     $this->form_data = $this->parse_migration_form_data( $_POST['form_data'] );
+
+    if ( empty( $_POST['table'] ) ) {
+      $return = array( 'wpsdb_error' => 1, 'body' => __( 'No tables selected for migration.', 'wp-sync-db' ) );
+      $result = $this->end_ajax( json_encode( $return ) );
+      return $result;
+    }
 
     $result = '';
     // checks if we're performing a backup, if so, continue with the backup and exit immediately after
@@ -872,6 +900,19 @@ class WPSDB extends WPSDB_Base {
   function ajax_initiate_migration() {
     $this->check_ajax_referer( 'initiate-migration' );
     $this->form_data = $this->parse_migration_form_data( $_POST['form_data'] );
+
+    if ( isset( $this->form_data['table_migrate_option'] ) && 'migrate_none' === $this->form_data['table_migrate_option'] ) {
+      $return = array(
+        'code' => 200,
+        'message' => 'OK',
+        'body'  => json_encode( array( 'error' => 0 ) ),
+      );
+      $return['dump_filename'] = '';
+      $return['dump_url'] = '';
+      $result = $this->end_ajax( json_encode( $return ) );
+      return $result;
+    }
+
     if ( $_POST['intent'] == 'savefile' ) {
 
       $return = array(
@@ -966,6 +1007,13 @@ class WPSDB extends WPSDB_Base {
     $return = array();
     $filtered_post = $this->filter_post_elements( $_POST, array( 'action', 'intent', 'form_data' ) );
     if ( $this->verify_signature( $filtered_post, $this->settings['key'] ) ) {
+      $form_data = $this->parse_migration_form_data( $_POST['form_data'] );
+      if ( isset( $form_data['table_migrate_option'] ) && 'migrate_none' === $form_data['table_migrate_option'] ) {
+        $return['error'] = 0;
+        $result = $this->end_ajax( serialize( $return ) );
+        return $result;
+      }
+
       if ( isset( $this->settings['allow_' . $_POST['intent']] ) && ( true === $this->settings['allow_' . $_POST['intent']] || 1 === $this->settings['allow_' . $_POST['intent']] ) ) {
         $return['error'] = 0;
       }

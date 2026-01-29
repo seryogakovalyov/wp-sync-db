@@ -613,6 +613,14 @@ var execute_next_step;
       $('ul', group).hide();
       parent = $(this).closest('li');
       $('ul', parent).show();
+
+      if ($(this).attr('name') == 'table_migrate_option') {
+        if ($('#migrate-selected').is(':checked')) {
+          $('.select-tables-wrap').show();
+        } else {
+          $('.select-tables-wrap').hide();
+        }
+      }
     });
 
     // on page load, expand hidden divs for selected options (browser form
@@ -625,6 +633,12 @@ var execute_next_step;
         }
       });
     });
+
+    if ($('#migrate-selected').is(':checked')) {
+      $('.select-tables-wrap').show();
+    } else {
+      $('.select-tables-wrap').hide();
+    }
 
     // expand and collapse content on click
     $('.header-expand-collapse').click(function() {
@@ -816,6 +830,10 @@ var execute_next_step;
       $('#overlay').show();
       backup_option = $('input[name=backup_option]:checked').val();
       table_option = $('input[name=table_migrate_option]:checked').val();
+      var skip_db_migration = (table_option == 'migrate_none');
+      if (skip_db_migration) {
+        stage = 'migrate';
+      }
 
       if (stage == 'backup') {
         if (table_option == 'migrate_only_with_prefix' && backup_option ==
@@ -846,7 +864,10 @@ var execute_next_step;
           }
         }
       } else {
-        if (table_intent == 'migrate_select') { // user has elected to migrate only certain tables
+        if (table_intent == 'migrate_none') {
+          tables_to_migrate = [];
+          table_rows = {};
+        } else if (table_intent == 'migrate_select') { // user has elected to migrate only certain tables
           // grab tables as per what the user has selected from the multiselect box
           tables_to_migrate = $('#select-tables').val();
           // user is pushing or exporting
@@ -930,10 +951,15 @@ var execute_next_step;
 
       }
 
-      table_details = decide_tables_to_display_rows(tables_to_migrate,
-        table_rows);
-      table_rows = table_details[0];
-      total_size = table_details[1];
+      if (!tables_to_migrate || tables_to_migrate.length === 0) {
+        table_rows = {};
+        total_size = 0;
+      } else {
+        table_details = decide_tables_to_display_rows(tables_to_migrate,
+          table_rows);
+        table_rows = table_details[0];
+        total_size = table_details[1];
+      }
 
       $('.progress-title').after('<img src="' + spinner_url +
         '" alt="" class="migration-progress-ajax-spinner general-spinner" />'
@@ -946,6 +972,22 @@ var execute_next_step;
 
       setup_counter();
       currently_migrating = true;
+
+      var skip_db_migration_request = (table_option == 'migrate_none');
+
+      if (skip_db_migration_request) {
+        hooks = $.wpsdb.apply_filters(
+          'wpsdb_before_migration_complete_hooks', hooks);
+        hooks.push('migration_complete');
+        hooks = $.wpsdb.apply_filters(
+          'wpsdb_after_migration_complete_hooks', hooks);
+        hooks.push('migration_complete_events');
+        next_step_in_migration = {
+          fn: wpsdb_call_next_hook
+        };
+        execute_next_step();
+        return;
+      }
 
       $.ajax({
         url: ajaxurl,
@@ -999,6 +1041,20 @@ var execute_next_step;
           var overall_table_progress = 0;
 
           migrate_table_recursive = function(current_row, primary_keys) {
+            if (!tables_to_migrate || tables_to_migrate.length === 0) {
+              hooks = $.wpsdb.apply_filters(
+                'wpsdb_before_migration_complete_hooks', hooks);
+              hooks.push('migration_complete');
+              hooks = $.wpsdb.apply_filters(
+                'wpsdb_after_migration_complete_hooks', hooks);
+              hooks.push('migration_complete_events');
+              next_step_in_migration = {
+                fn: wpsdb_call_next_hook
+              };
+              execute_next_step();
+              return;
+            }
+
             if (i >= tables_to_migrate.length) {
               if (stage == 'backup') {
                 stage = 'migrate';
@@ -1006,7 +1062,10 @@ var execute_next_step;
                 progress_size = 0;
                 $('.progress-bar').width('0px');
 
-                if (table_intent == 'migrate_select') {
+                if (table_intent == 'migrate_none') {
+                  tables_to_migrate = [];
+                  table_rows = {};
+                } else if (table_intent == 'migrate_select') {
                   tables_to_migrate = $('#select-tables').val();
                   if (migration_intent == 'push' || migration_intent ==
                     'savefile') {
@@ -1028,10 +1087,15 @@ var execute_next_step;
                 $('.progress-tables').empty();
                 $('.progress-tables-hover-boxes').empty();
 
-                table_details = decide_tables_to_display_rows(
-                  tables_to_migrate, table_rows);
-                table_rows = table_details[0];
-                total_size = table_details[1];
+                if (!tables_to_migrate || tables_to_migrate.length === 0) {
+                  table_rows = {};
+                  total_size = 0;
+                } else {
+                  table_details = decide_tables_to_display_rows(
+                    tables_to_migrate, table_rows);
+                  table_rows = table_details[0];
+                  total_size = table_details[1];
+                }
               } else {
                 hooks = $.wpsdb.apply_filters(
                   'wpsdb_before_migration_complete_hooks', hooks);
@@ -1739,7 +1803,13 @@ var execute_next_step;
 
     // show / hide table select box when specific settings change
     $('input.multiselect-toggle').change(function() {
-      $(this).parents('.expandable-content').children('.select-wrap').toggle();
+      if ($(this).attr('name') == 'table_migrate_option') {
+        if ($('#migrate-selected').is(':checked')) {
+          $('.select-tables-wrap').show();
+        } else {
+          $('.select-tables-wrap').hide();
+        }
+      }
     });
 
     $('.show-multiselect').each(function() {
@@ -1748,7 +1818,7 @@ var execute_next_step;
           '.header-expand-collapse').children('.expand-collapse-arrow').removeClass(
           'collapsed');
         $(this).parents('.expandable-content').show();
-        $(this).parents('.expandable-content').children('.select-wrap').toggle();
+        $(this).parents('.expandable-content').children('.select-wrap').show();
       }
     });
 

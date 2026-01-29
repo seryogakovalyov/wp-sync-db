@@ -231,11 +231,11 @@ $loaded_profile = wp_parse_args( $loaded_profile, $this->checkbox_options );
 			<div class="option-section">
 				<?php $tables = $this->get_table_sizes(); ?>
 				<div class="header-expand-collapse clearfix">
-					<div class="expand-collapse-arrow collapsed">&#x25BC;</div>
+					<div class="expand-collapse-arrow">&#x25BC;</div>
 					<div class="option-heading tables-header">Tables</div>
 				</div>
 
-				<div class="indent-wrap expandable-content table-select-wrap" style="display: none;">
+				<div class="indent-wrap expandable-content table-select-wrap" style="display: block;">
 
 					<ul class="option-group table-migrate-options">
 						<li>
@@ -248,6 +248,12 @@ $loaded_profile = wp_parse_args( $loaded_profile, $this->checkbox_options );
 							<label for="migrate-selected">
 							<input id="migrate-selected" class="multiselect-toggle show-multiselect" type="radio" value="migrate_select" name="table_migrate_option"<?php echo ( $loaded_profile['table_migrate_option'] == 'migrate_select' ? ' checked="checked"' : '' ); ?> />
 							<?php _e( 'Migrate only selected tables below', 'wp-sync-db' ); ?>
+							</label>
+						</li>
+						<li>
+							<label for="migrate-none">
+							<input id="migrate-none" class="multiselect-toggle" type="radio" value="migrate_none" name="table_migrate_option"<?php echo ( $loaded_profile['table_migrate_option'] == 'migrate_none' ? ' checked="checked"' : '' ); ?> />
+							<?php _e( 'Do not migrate database tables', 'wp-sync-db' ); ?>
 							</label>
 						</li>
 					</ul>
