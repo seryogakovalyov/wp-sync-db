@@ -239,7 +239,7 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 
 		$post_args = array(
 			'action'	=> 'wpsdbmf_push_request',
-			'files'		=> serialize( $files_to_migrate )
+			'files'		=> wp_json_encode( $files_to_migrate )
 		);
 
 		$post_args['sig'] = $this->create_signature( $post_args, $_POST['key'] );
@@ -263,7 +263,7 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 				'wpsdb_error' 	=> 1,
 				'body'			=> $this->invalid_content_verification_error . ' (#101mf)',
 			);
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
@@ -272,14 +272,17 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 				'wpsdb_error' 	=> 1,
 				'body'			=> __( '$_FILES is empty, the upload appears to have failed', 'wp-sync-db-media-files' ) . ' (#106mf)',
 			);
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
 		$upload_dir = $this->uploads_dir();
 
 		$files = $this->diverse_array( $_FILES['media'] );
-		$file_paths = unserialize( $filtered_post['files'] );
+		$file_paths = json_decode( $filtered_post['files'], true );
+		if ( ! is_array( $file_paths ) ) {
+			$file_paths = array();
+		}
 		$i = 0;
 		$errors = array();
 		foreach( $files as &$file ) {
@@ -305,7 +308,7 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 				'body'			=> implode( '<br />', $errors ) . '<br />'
 			);
 		}
-		$result = $this->end_ajax( serialize( $return ) );
+		$result = $this->end_ajax( wp_json_encode( $return ) );
 		return $result;
 	}
 
@@ -351,7 +354,7 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 			else {
 				$data = array();
 				$data['action'] = 'wpsdbmf_remove_local_attachments';
-				$data['remote_attachments'] = serialize( $local_attachments );
+				$data['remote_attachments'] = wp_json_encode( $local_attachments );
 				$data['sig'] = $this->create_signature( $data, $_POST['key'] );
 				$ajax_url = trailingslashit( $_POST['url'] ) . 'wp-admin/admin-ajax.php';
 				$response = $this->remote_post( $ajax_url, $data, __FUNCTION__ );
@@ -371,17 +374,20 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 				'wpsdb_error' 	=> 1,
 				'body'			=> $this->invalid_content_verification_error . ' (#109mf)',
 			);
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
-		$remote_attachments = @unserialize( $filtered_post['remote_attachments'] );
+		$remote_attachments = json_decode( $filtered_post['remote_attachments'], true );
+		if ( ! is_array( $remote_attachments ) ) {
+			$remote_attachments = array();
+		}
 		if( false === $remote_attachments ) {
 			$return = array(
 				'wpsdb_error' 	=> 1,
 				'body'			=> __( 'Error attempting to unserialize the remote attachment data', 'wp-sync-db-media-files' ) . ' (#110mf)',
 			);
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
@@ -390,7 +396,7 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 		$return = array(
 			'success' 	=> 1,
 		);
-		$result = serialize( json_encode( $return ) );
+		$result = wp_json_encode( $return );
 		return $result;
 	}
 
@@ -462,7 +468,7 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 				'wpsdb_error' 	=> 1,
 				'body'			=> $this->invalid_content_verification_error . ' (#100mf)',
 			);
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
@@ -480,7 +486,7 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 		$return['remote_media'] = $this->get_local_media();
 		$return['remote_uploads_url'] = $upload_url;
 
-		$result = $this->end_ajax( serialize( $return ) );
+		$result = $this->end_ajax( wp_json_encode( $return ) );
 		return $result;
 	}
 
@@ -593,13 +599,13 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 			return $result;
 		}
 
-		if ( ! is_serialized( trim( $response ) ) ) {
+		if ( ! $this->is_json( trim( $response ), true ) ) {
 			$return = array( 'wpsdb_error'	=> 1, 'body' => $response );
 			$result = $this->end_ajax( json_encode( $return ) );
 			return $result;
 		}
 
-		$response = unserialize( trim( $response ) );
+		$response = json_decode( trim( $response ), true );
 
 		if ( isset( $response['wpsdb_error'] ) ) {
 			$result = $this->end_ajax( json_encode( $response ) );

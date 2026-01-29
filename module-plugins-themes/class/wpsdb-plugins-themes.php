@@ -165,9 +165,9 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			return $result;
 		}
 
-		$response = unserialize( trim( $response ) );
-		if ( false === $response ) {
-			$error_msg = __( 'Failed attempting to unserialize the response from the remote server. Please contact support.', 'wp-sync-db' );
+		$response = json_decode( trim( $response ), true );
+		if ( null === $response && json_last_error() !== JSON_ERROR_NONE ) {
+			$error_msg = __( 'Failed attempting to decode the JSON response from the remote server. Please contact support.', 'wp-sync-db' );
 			$return = array( 'wpsdb_error' => 1, 'body' => $error_msg );
 			$this->log_error( $error_msg );
 			$result = $this->end_ajax( json_encode( $return ) );
@@ -193,14 +193,14 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			$return['error'] = 1;
 			$return['message'] = $this->invalid_content_verification_error . ' (#120)';
 			$this->log_error( $this->invalid_content_verification_error . ' (#120)', $filtered_post );
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
 		$return['plugins'] = $this->get_plugins_list();
 		$return['themes'] = $this->get_themes_list();
 		$return['error'] = 0;
-		$result = $this->end_ajax( serialize( $return ) );
+		$result = $this->end_ajax( wp_json_encode( $return ) );
 		return $result;
 	}
 
@@ -240,9 +240,9 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 				return $result;
 			}
 
-			$response = unserialize( trim( $response ) );
-			if ( false === $response || ! is_array( $response ) ) {
-				$error_msg = __( 'Failed attempting to unserialize the response from the remote server. Please contact support.', 'wp-sync-db' );
+			$response = json_decode( trim( $response ), true );
+			if ( ( null === $response && json_last_error() !== JSON_ERROR_NONE ) || ! is_array( $response ) ) {
+				$error_msg = __( 'Failed attempting to decode the JSON response from the remote server. Please contact support.', 'wp-sync-db' );
 				$return = array( 'wpsdb_error' => 1, 'body' => $error_msg );
 				$this->log_error( $error_msg );
 				$result = $this->end_ajax( json_encode( $return ) );
@@ -306,9 +306,9 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 				return $result;
 			}
 
-			$response = unserialize( trim( $response ) );
-			if ( false === $response || ! is_array( $response ) ) {
-				$error_msg = __( 'Failed attempting to unserialize the response from the remote server. Please contact support.', 'wp-sync-db' );
+			$response = json_decode( trim( $response ), true );
+			if ( ( null === $response && json_last_error() !== JSON_ERROR_NONE ) || ! is_array( $response ) ) {
+				$error_msg = __( 'Failed attempting to decode the JSON response from the remote server. Please contact support.', 'wp-sync-db' );
 				$return = array( 'wpsdb_error' => 1, 'body' => $error_msg );
 				$this->log_error( $error_msg );
 				$result = $this->end_ajax( json_encode( $return ) );
@@ -355,9 +355,9 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			return $result;
 		}
 
-		$response = unserialize( trim( $response ) );
-		if ( false === $response || ! is_array( $response ) ) {
-			$error_msg = __( 'Failed attempting to unserialize the response from the remote server. Please contact support.', 'wp-sync-db' );
+		$response = json_decode( trim( $response ), true );
+		if ( ( null === $response && json_last_error() !== JSON_ERROR_NONE ) || ! is_array( $response ) ) {
+			$error_msg = __( 'Failed attempting to decode the JSON response from the remote server. Please contact support.', 'wp-sync-db' );
 			$return = array( 'wpsdb_error' => 1, 'body' => $error_msg );
 			$this->log_error( $error_msg );
 			$result = $this->end_ajax( json_encode( $return ) );
@@ -387,7 +387,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			$return['error'] = 1;
 			$return['message'] = $this->invalid_content_verification_error . ' (#120)';
 			$this->log_error( $this->invalid_content_verification_error . ' (#120)', $filtered_post );
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
@@ -396,7 +396,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 
 		$return['files'] = $this->get_files_list( $selected_plugins, $selected_themes );
 		$return['error'] = 0;
-		$result = $this->end_ajax( serialize( $return ) );
+		$result = $this->end_ajax( wp_json_encode( $return ) );
 		return $result;
 	}
 
@@ -408,7 +408,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			$return['error'] = 1;
 			$return['message'] = $this->invalid_content_verification_error . ' (#120)';
 			$this->log_error( $this->invalid_content_verification_error . ' (#120)', $filtered_post );
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
@@ -417,7 +417,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 
 		$return['files'] = $files_data;
 		$return['error'] = 0;
-		$result = $this->end_ajax( serialize( $return ) );
+		$result = $this->end_ajax( wp_json_encode( $return ) );
 		return $result;
 	}
 
@@ -429,7 +429,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			$return['error'] = 1;
 			$return['message'] = $this->invalid_content_verification_error . ' (#120)';
 			$this->log_error( $this->invalid_content_verification_error . ' (#120)', $filtered_post );
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
@@ -437,7 +437,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 		if ( ! is_array( $files_data ) ) {
 			$return['error'] = 1;
 			$return['message'] = __( 'Invalid files payload.', 'wp-sync-db' );
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
@@ -445,14 +445,14 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 		if ( ! empty( $write_result['errors'] ) ) {
 			$return['error'] = 1;
 			$return['message'] = implode( ' | ', $write_result['errors'] );
-			$result = $this->end_ajax( serialize( $return ) );
+			$result = $this->end_ajax( wp_json_encode( $return ) );
 			return $result;
 		}
 
 		$return['count'] = $write_result['count'];
 		$return['size'] = $write_result['size'];
 		$return['error'] = 0;
-		$result = $this->end_ajax( serialize( $return ) );
+		$result = $this->end_ajax( wp_json_encode( $return ) );
 		return $result;
 	}
 

@@ -77,6 +77,12 @@ class WPSDB_Base {
 		}
 	}
 
+	function is_json( $string, $strict = false ) {
+		$json = @json_decode( $string, true );
+		if ( $strict == true && ! is_array( $json ) ) return false;
+		return ! ( $json == NULL || $json == false );
+	}
+
 	function remote_post( $url, $data, $scope, $args = array(), $expecting_serial = false ) {
 		$this->set_time_limit();
 
@@ -159,11 +165,11 @@ class WPSDB_Base {
 				return false;
 			}
 		}
-		elseif ( $expecting_serial && is_serialized( $response['body'] ) == false ) {
+		elseif ( $expecting_serial && $this->is_json( $response['body'], true ) == false ) {
 			if( strpos( $url, 'https://' ) === 0 && $scope == 'ajax_verify_connection_to_remote_site' ) {
 				return $this->retry_remote_post( $url, $data, $scope, $args, $expecting_serial );
 			}
-			$this->error = __( 'There was a problem with the AJAX request, we were expecting a serialized response, instead we received:<br />', 'wp-sync-db' ) . htmlentities( $response['body'] );
+			$this->error = __( 'There was a problem with the AJAX request, we were expecting a JSON response, instead we received:<br />', 'wp-sync-db' ) . htmlentities( $response['body'] );
 			$this->log_error( $this->error, $response );
 			return false;
 		}
@@ -175,9 +181,9 @@ class WPSDB_Base {
 			$this->log_error( $this->error, $response );
 			return false;
 		}
-		elseif ( $expecting_serial && is_serialized( $response['body'] ) == true && $scope == 'ajax_verify_connection_to_remote_site' ) {
-			$unserialized_response = unserialize( $response['body'] );
-			if ( isset( $unserialized_response['error'] ) && '1' == $unserialized_response['error'] && strpos( $url, 'https://' ) === 0 ) {
+		elseif ( $expecting_serial && $this->is_json( $response['body'], true ) == true && $scope == 'ajax_verify_connection_to_remote_site' ) {
+			$decoded_response = json_decode( $response['body'], true );
+			if ( isset( $decoded_response['error'] ) && '1' == $decoded_response['error'] && strpos( $url, 'https://' ) === 0 ) {
 				return $this->retry_remote_post( $url, $data, $scope, $args, $expecting_serial );
 			}
 		}

@@ -289,6 +289,32 @@ class WPSDB extends WPSDB_Base {
     return ! ( $json == NULL || $json == false );
   }
 
+  function encode_primary_keys( $primary_keys ) {
+    if ( empty( $primary_keys ) || ! is_array( $primary_keys ) ) {
+      return '';
+    }
+    return base64_encode( wp_json_encode( $primary_keys ) );
+  }
+
+  function decode_primary_keys( $value ) {
+    $value = trim( (string) $value );
+    if ( $value === '' ) {
+      return array();
+    }
+
+    $decoded = base64_decode( $value, true );
+    if ( false !== $decoded && $this->is_json( $decoded, true ) ) {
+      return json_decode( $decoded, true );
+    }
+
+    if ( is_serialized( $value ) ) {
+      $result = @unserialize( stripslashes( $value ), array( 'allowed_classes' => false ) );
+      return is_array( $result ) ? $result : array();
+    }
+
+    return array();
+  }
+
   function get_sql_dump_info( $migration_type, $info_type ) {
     if( empty( $this->session_salt ) ) {
       $this->session_salt = strtolower( wp_generate_password( 5, false, false ) );
@@ -540,14 +566,14 @@ class WPSDB extends WPSDB_Base {
       $return['error'] = 1;
       $return['message'] = $this->invalid_content_verification_error . ' (#120)';
       $this->log_error( $this->invalid_content_verification_error . ' (#120)', $filtered_post );
-      $result = $this->end_ajax( serialize( $return ) );
+      $result = $this->end_ajax( wp_json_encode( $return ) );
       return $result;
     }
 
     $form_data = $this->parse_migration_form_data( $_POST['form_data'] );
     if ( isset( $form_data['table_migrate_option'] ) && 'migrate_none' === $form_data['table_migrate_option'] ) {
       $return = array( 'error' => 0 );
-      $result = $this->end_ajax( serialize( $return ) );
+      $result = $this->end_ajax( wp_json_encode( $return ) );
       return $result;
     }
 
@@ -961,10 +987,10 @@ class WPSDB extends WPSDB_Base {
         return $result;
       }
 
-      $return = @unserialize( trim( $response ) );
+      $return = json_decode( trim( $response ), true );
 
-      if ( false === $return ) {
-        $error_msg = __( 'Failed attempting to unserialize the response from the remote server. Please contact support.', 'wp-sync-db' );
+      if ( null === $return && json_last_error() !== JSON_ERROR_NONE ) {
+        $error_msg = __( 'Failed attempting to decode the JSON response from the remote server. Please contact support.', 'wp-sync-db' );
         $return = array( 'wpsdb_error' => 1, 'body' => $error_msg );
         $this->log_error( $error_msg, $response );
         $result = $this->end_ajax( json_encode( $return ) );
@@ -1010,7 +1036,7 @@ class WPSDB extends WPSDB_Base {
       $form_data = $this->parse_migration_form_data( $_POST['form_data'] );
       if ( isset( $form_data['table_migrate_option'] ) && 'migrate_none' === $form_data['table_migrate_option'] ) {
         $return['error'] = 0;
-        $result = $this->end_ajax( serialize( $return ) );
+        $result = $this->end_ajax( wp_json_encode( $return ) );
         return $result;
       }
 
@@ -1052,7 +1078,7 @@ class WPSDB extends WPSDB_Base {
       }
     }
 
-    $result = $this->end_ajax( serialize( $return ) );
+    $result = $this->end_ajax( wp_json_encode( $return ) );
     return $result;
   }
 
@@ -1133,10 +1159,10 @@ class WPSDB extends WPSDB_Base {
       return $result;
     }
 
-    $response = unserialize( trim( $response ) );
+    $response = json_decode( trim( $response ), true );
 
-    if ( false === $response ) {
-      $error_msg = __( 'Failed attempting to unserialize the response from the remote server. Please contact support.', 'wp-sync-db' );
+    if ( null === $response && json_last_error() !== JSON_ERROR_NONE ) {
+      $error_msg = __( 'Failed attempting to decode the JSON response from the remote server. Please contact support.', 'wp-sync-db' );
       $return = array( 'wpsdb_error' => 1, 'body' => $error_msg );
       $this->log_error( $error_msg );
       $result = $this->end_ajax( json_encode( $return ) );
@@ -1177,7 +1203,7 @@ class WPSDB extends WPSDB_Base {
       $return['error'] = 1;
       $return['message'] = $this->invalid_content_verification_error . ' (#120) <a href="#" class="try-again js-action-link">' . __( 'Try again?', 'wp-sync-db' ) . '</a>';
       $this->log_error( $this->invalid_content_verification_error . ' (#120)', $filtered_post );
-      $result = $this->end_ajax( serialize( $return ) );
+      $result = $this->end_ajax( wp_json_encode( $return ) );
       return $result;
     }
 
@@ -1190,7 +1216,7 @@ class WPSDB extends WPSDB_Base {
         $intent = __( 'push', 'wp-sync-db' );
       }
       $return['message'] = sprintf( __( 'The connection succeeded but the remote site is configured to reject %s connections. You can change this in the "settings" tab on the remote site. (#122) <a href="#" class="try-again js-action-link">Try again?</a>', 'wp-sync-db' ), $intent );
-      $result = $this->end_ajax( serialize( $return ) );
+      $result = $this->end_ajax( wp_json_encode( $return ) );
       return $result;
     }
 
@@ -1214,7 +1240,7 @@ class WPSDB extends WPSDB_Base {
     $return['upload_dir_long'] = $this->get_upload_info( 'path' );
     $return['temp_prefix'] = $this->temp_prefix;
     $return = apply_filters( 'wpsdb_establish_remote_connection_data', $return );
-    $result = $this->end_ajax( serialize( $return ) );
+    $result = $this->end_ajax( wp_json_encode( $return ) );
     return $result;
   }
 
@@ -1724,9 +1750,9 @@ class WPSDB extends WPSDB_Base {
 
     $first_select = true;
     if( ! empty( $_POST['primary_keys'] ) ) {
-      $_POST['primary_keys'] = trim( $_POST['primary_keys'] );
-      if( ! empty( $_POST['primary_keys'] ) && is_serialized( $_POST['primary_keys'] ) ) {
-        $this->primary_keys = unserialize( stripslashes( $_POST['primary_keys'] ) );
+      $decoded_primary_keys = $this->decode_primary_keys( $_POST['primary_keys'] );
+      if ( ! empty( $decoded_primary_keys ) ) {
+        $this->primary_keys = $decoded_primary_keys;
         $first_select = false;
       }
     }
@@ -2141,14 +2167,14 @@ class WPSDB extends WPSDB_Base {
       $result = $this->end_ajax( json_encode(
         array(
           'current_row' 	=> $this->row_tracker,
-          'primary_keys'	=> serialize( $this->primary_keys )
+          'primary_keys'	=> $this->encode_primary_keys( $this->primary_keys )
         )
       ) );
       return $result;
     }
 
     if ( $_POST['intent'] == 'pull' ) {
-      $result = $this->end_ajax( $this->row_tracker . ',' . serialize( $this->primary_keys ) );
+      $result = $this->end_ajax( $this->row_tracker . ',' . $this->encode_primary_keys( $this->primary_keys ) );
       return $result;
     }
 
@@ -2181,7 +2207,7 @@ class WPSDB extends WPSDB_Base {
     $result = $this->end_ajax( json_encode(
       array(
         'current_row' 		=> $this->row_tracker,
-        'primary_keys'		=> serialize( $this->primary_keys )
+        'primary_keys'		=> $this->encode_primary_keys( $this->primary_keys )
       )
     ) );
     return $result;
