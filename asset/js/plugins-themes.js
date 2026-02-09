@@ -363,6 +363,7 @@ var migrate_plugins_themes_recursive;
           args.progress_count = 0;
           args.total_files = Object.size(args.files_to_migrate);
           args.bottleneck = parseInt(wpsdb_max_request, 10) || 0;
+          args.transfer_id = 'pt_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
 
           $('.progress-bar').width('0px');
           $('.progress-tables').empty();
@@ -386,27 +387,46 @@ var migrate_plugins_themes_recursive;
         return;
       }
 
+      var intent = migration_type();
       var file_chunk = [];
       var file_chunk_size = 0;
+      var file_chunk_payload_size = 0;
       var file_chunk_count = 0;
+      var max_payload_size = args.bottleneck && args.bottleneck > 0 ? Math.floor(args.bottleneck * 0.7) : 0;
+      if (!max_payload_size || max_payload_size < 32768) {
+        max_payload_size = 262144;
+      }
+      if (max_payload_size > 524288) {
+        max_payload_size = 524288;
+      }
 
       $.each(args.files_to_migrate, function(path, size) {
         size = parseInt(size, 10) || 0;
+        var estimated_item_payload_size = path.length + 64;
+        if (intent === 'push') {
+          estimated_item_payload_size += Math.ceil(size * 1.38) + 256;
+        }
         if (!file_chunk.length) {
           file_chunk.push(path);
           file_chunk_size += size;
+          file_chunk_payload_size += estimated_item_payload_size;
           delete args.files_to_migrate[path];
           file_chunk_count++;
         } else {
+          if ((file_chunk_payload_size + estimated_item_payload_size) > max_payload_size) {
+            return false;
+          }
           if (args.bottleneck && (file_chunk_size + size) > args.bottleneck) {
             return false;
           }
           file_chunk.push(path);
           file_chunk_size += size;
+          file_chunk_payload_size += estimated_item_payload_size;
           delete args.files_to_migrate[path];
           file_chunk_count++;
         }
       });
+      var is_last_chunk = Object.size(args.files_to_migrate) === 0;
 
       var connection_info = $.trim($('.pull-push-connection-info').val()).split("\n");
 
@@ -419,10 +439,12 @@ var migrate_plugins_themes_recursive;
         cache: false,
         data: {
           action: 'wpsdbpt_migrate_files',
-          intent: migration_type(),
+          intent: intent,
           url: connection_info[0],
           key: connection_info[1],
           file_chunk: file_chunk,
+          transfer_id: args.transfer_id,
+          is_last_chunk: is_last_chunk ? '1' : '0',
           nonce: wpsdb_nonces.migrate_plugins_themes
         },
         error: function() {

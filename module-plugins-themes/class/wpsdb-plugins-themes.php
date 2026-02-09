@@ -282,6 +282,8 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 
 		$intent = $_POST['intent'];
 		$file_chunk = $this->parse_selected_list( $_POST['file_chunk'] );
+		$transfer_id = isset( $_POST['transfer_id'] ) ? sanitize_key( wp_unslash( $_POST['transfer_id'] ) ) : '';
+		$is_last_chunk = ! empty( $_POST['is_last_chunk'] ) && '1' === (string) $_POST['is_last_chunk'];
 
 		if ( empty( $file_chunk ) ) {
 			$return = array( 'count' => 0, 'size' => 0 );
@@ -323,7 +325,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			}
 
 			$files_data = isset( $response['files'] ) && is_array( $response['files'] ) ? $response['files'] : array();
-			$write_result = $this->write_files( $files_data );
+			$write_result = $this->write_files( $files_data, $transfer_id, $is_last_chunk );
 			if ( ! empty( $write_result['errors'] ) ) {
 				$return = array( 'wpsdb_error' => 1, 'body' => implode( '<br />', $write_result['errors'] ) );
 				$result = $this->end_ajax( json_encode( $return ) );
@@ -343,8 +345,16 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			'action' => 'wpsdbpt_receive_files_chunk',
 			'intent' => $intent,
 			'files' => wp_json_encode( $files_data ),
+			'transfer_id' => $transfer_id,
+			'is_last_chunk' => $is_last_chunk ? '1' : '0',
 		);
-		$data['sig'] = $this->create_signature( $data, $_POST['key'] );
+		// Keep signature backward-compatible with older remote versions that do not know transfer metadata.
+		$sig_data = array(
+			'action' => $data['action'],
+			'intent' => $data['intent'],
+			'files' => $data['files'],
+		);
+		$data['sig'] = $this->create_signature( $sig_data, $_POST['key'] );
 		$ajax_url = trailingslashit( $_POST['url'] ) . 'wp-admin/admin-ajax.php';
 		$timeout = apply_filters( 'wpsdb_prepare_remote_connection_timeout', 10 );
 		$response = $this->remote_post( $ajax_url, $data, __FUNCTION__, compact( 'timeout' ), true );
@@ -403,8 +413,13 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 	function respond_to_get_remote_files_chunk() {
 		$return = array();
 
-		$filtered_post = $this->filter_post_elements( wp_unslash( $_POST ), array( 'action', 'intent', 'files' ) );
-		if ( ! $this->verify_signature( $filtered_post, $this->settings['key'] ) ) {
+		$filtered_post = $this->filter_post_elements( wp_unslash( $_POST ), array( 'action', 'intent', 'files', 'transfer_id', 'is_last_chunk' ) );
+		$legacy_filtered_post = $this->filter_post_elements( wp_unslash( $_POST ), array( 'action', 'intent', 'files' ) );
+		$is_valid_sig = $this->verify_signature( $filtered_post, $this->settings['key'] );
+		if ( ! $is_valid_sig ) {
+			$is_valid_sig = $this->verify_signature( $legacy_filtered_post, $this->settings['key'] );
+		}
+		if ( ! $is_valid_sig ) {
 			$return['error'] = 1;
 			$return['message'] = $this->invalid_content_verification_error . ' (#120)';
 			$this->log_error( $this->invalid_content_verification_error . ' (#120)', $filtered_post );
@@ -441,7 +456,9 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			return $result;
 		}
 
-		$write_result = $this->write_files( $files_data );
+		$transfer_id = isset( $_POST['transfer_id'] ) ? sanitize_key( wp_unslash( $_POST['transfer_id'] ) ) : '';
+		$is_last_chunk = ! empty( $_POST['is_last_chunk'] ) && '1' === (string) $_POST['is_last_chunk'];
+		$write_result = $this->write_files( $files_data, $transfer_id, $is_last_chunk );
 		if ( ! empty( $write_result['errors'] ) ) {
 			$return['error'] = 1;
 			$return['message'] = implode( ' | ', $write_result['errors'] );
@@ -628,7 +645,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 		return $files_data;
 	}
 
-	function write_files( $files_data ) {
+	function write_files( $files_data, $transfer_id = '', $is_last_chunk = false ) {
 		$errors = array();
 		$count = 0;
 		$size = 0;
@@ -637,7 +654,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			if ( $this->is_ignored_relative_path( $relative ) ) {
 				continue;
 			}
-			$path = $this->safe_content_path( $relative );
+			$path = $this->get_write_target_path( $relative, $transfer_id );
 			if ( ! $path ) {
 				$errors[] = sprintf( __( 'Invalid file path: %s', 'wp-sync-db' ), $relative );
 				continue;
@@ -676,10 +693,131 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			$size += (int) $result;
 		}
 
+		if ( empty( $errors ) && ! empty( $transfer_id ) && $is_last_chunk ) {
+			$finalize_result = $this->apply_staged_transfer( $transfer_id );
+			$errors = array_merge( $errors, $finalize_result['errors'] );
+		}
+
 		return array(
 			'errors' => $errors,
 			'count' => $count,
 			'size' => $size,
 		);
+	}
+
+	function get_write_target_path( $relative, $transfer_id ) {
+		if ( empty( $transfer_id ) ) {
+			return $this->safe_content_path( $relative );
+		}
+		return $this->safe_staging_path( $transfer_id, $relative );
+	}
+
+	function get_staging_root( $transfer_id ) {
+		$upload_dir = wp_upload_dir();
+		$base_dir = isset( $upload_dir['basedir'] ) ? wp_normalize_path( $upload_dir['basedir'] ) : '';
+		if ( empty( $base_dir ) ) {
+			return false;
+		}
+
+		$transfer_id = sanitize_key( $transfer_id );
+		if ( empty( $transfer_id ) ) {
+			return false;
+		}
+
+		return $base_dir . '/wp-sync-db-staging/plugins-themes/' . $transfer_id;
+	}
+
+	function safe_staging_path( $transfer_id, $relative ) {
+		$staging_root = $this->get_staging_root( $transfer_id );
+		if ( ! $staging_root ) {
+			return false;
+		}
+
+		$relative = ltrim( wp_normalize_path( $relative ), '/' );
+		if ( false !== strpos( $relative, '..' ) ) {
+			return false;
+		}
+
+		$path = wp_normalize_path( $staging_root . '/' . $relative );
+		if ( strpos( $path, $staging_root ) !== 0 ) {
+			return false;
+		}
+
+		return $path;
+	}
+
+	function apply_staged_transfer( $transfer_id ) {
+		$errors = array();
+		$staging_root = $this->get_staging_root( $transfer_id );
+		if ( ! $staging_root || ! file_exists( $staging_root ) ) {
+			return array( 'errors' => $errors );
+		}
+
+		$iterator = new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator( $staging_root, RecursiveDirectoryIterator::SKIP_DOTS ),
+			RecursiveIteratorIterator::SELF_FIRST
+		);
+
+		foreach ( $iterator as $path => $info ) {
+			if ( ! $info->isFile() ) {
+				continue;
+			}
+
+			$path = wp_normalize_path( $path );
+			$relative = ltrim( substr( $path, strlen( $staging_root ) ), '/' );
+			if ( $this->is_ignored_relative_path( $relative ) ) {
+				continue;
+			}
+
+			$destination = $this->safe_content_path( $relative );
+			if ( ! $destination ) {
+				$errors[] = sprintf( __( 'Invalid file path: %s', 'wp-sync-db' ), $relative );
+				continue;
+			}
+
+			$destination_dir = dirname( $destination );
+			if ( ! file_exists( $destination_dir ) && ! wp_mkdir_p( $destination_dir ) ) {
+				$errors[] = sprintf( __( 'Failed creating directory: %s', 'wp-sync-db' ), $destination_dir );
+				continue;
+			}
+
+			if ( file_exists( $destination ) && ! @unlink( $destination ) ) {
+				$errors[] = sprintf( __( 'Failed replacing file: %s', 'wp-sync-db' ), $relative );
+				continue;
+			}
+
+			if ( ! @rename( $path, $destination ) ) {
+				$errors[] = sprintf( __( 'Failed moving staged file: %s', 'wp-sync-db' ), $relative );
+				continue;
+			}
+		}
+
+		if ( empty( $errors ) ) {
+			$this->delete_directory_recursive( $staging_root );
+		}
+
+		return array( 'errors' => $errors );
+	}
+
+	function delete_directory_recursive( $directory ) {
+		$directory = wp_normalize_path( $directory );
+		if ( empty( $directory ) || ! is_dir( $directory ) ) {
+			return;
+		}
+
+		$iterator = new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator( $directory, RecursiveDirectoryIterator::SKIP_DOTS ),
+			RecursiveIteratorIterator::CHILD_FIRST
+		);
+
+		foreach ( $iterator as $path => $info ) {
+			if ( $info->isDir() ) {
+				@rmdir( $path );
+			} else {
+				@unlink( $path );
+			}
+		}
+
+		@rmdir( $directory );
 	}
 }
