@@ -1347,3 +1347,226 @@ body.mp6 .migration-progress-ajax-spinner {
   text-align: center;
   color: #777;
 }
+
+/* UI Refresh (native WP admin, no structural changes) */
+.wpsdb {
+  --wpsdb-border: #d0d7de;
+  --wpsdb-border-soft: #e6eaef;
+  --wpsdb-surface: #ffffff;
+  --wpsdb-surface-muted: #f6f7f7;
+  --wpsdb-text: #1d2327;
+  --wpsdb-text-muted: #50575e;
+  --wpsdb-focus: #2271b1;
+  --wpsdb-success: #046b39;
+  --wpsdb-warning: #996800;
+  --wpsdb-danger: #b32d2e;
+}
+
+.wpsdb #wpsdb-main,
+#wpsdb-main {
+  max-width: 860px;
+}
+
+.wpsdb .option-section {
+  border: 1px solid var(--wpsdb-border);
+  border-radius: 6px;
+  background: var(--wpsdb-surface);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+
+.wpsdb .option-section h3 {
+  margin: 0 0 10px 0;
+  color: var(--wpsdb-text);
+}
+
+.wpsdb .option-description {
+  color: var(--wpsdb-text-muted);
+}
+
+.wpsdb .migrate-tab .pull-push-connection-info,
+.wpsdb .connection-info,
+.wpsdb input[type="text"],
+.wpsdb input[type="password"],
+.wpsdb select,
+.wpsdb textarea {
+  border-color: var(--wpsdb-border);
+  border-radius: 4px;
+  box-shadow: none;
+}
+
+.wpsdb .migrate-tab .pull-push-connection-info:focus,
+.wpsdb .connection-info:focus,
+.wpsdb input[type="text"]:focus,
+.wpsdb input[type="password"]:focus,
+.wpsdb select:focus,
+.wpsdb textarea:focus {
+  border-color: var(--wpsdb-focus);
+  box-shadow: 0 0 0 1px var(--wpsdb-focus);
+}
+
+.wpsdb .button,
+.wpsdb .button-secondary {
+  border-color: #b9c2cc;
+  background: #f6f7f7;
+  color: #2c3338;
+}
+
+.wpsdb .button:hover,
+.wpsdb .button-secondary:hover {
+  background: #f0f0f1;
+  border-color: #8c8f94;
+}
+
+.wpsdb .button-primary {
+  background: #2271b1;
+  border-color: #2271b1;
+}
+
+.wpsdb .button-primary:hover {
+  background: #135e96;
+  border-color: #135e96;
+}
+
+.wpsdb .multiselect {
+  border: 1px solid var(--wpsdb-border);
+  border-radius: 4px;
+  background: #fff;
+}
+
+.wpsdb .plugins-themes-options .plugins-themes-block {
+  border: 1px solid var(--wpsdb-border-soft);
+  border-radius: 6px;
+  background: var(--wpsdb-surface);
+  padding: 12px 14px;
+}
+
+.wpsdb .plugins-themes-options .plugins-themes-toolbar {
+  margin: 8px 0 10px 0;
+}
+
+.wpsdb .plugins-themes-options .pt-source-target {
+  color: var(--wpsdb-text-muted);
+}
+
+.wpsdb .plugins-themes-table {
+  border: 1px solid var(--wpsdb-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.wpsdb .plugins-themes-table thead th {
+  background: var(--wpsdb-surface-muted);
+  border-bottom: 1px solid var(--wpsdb-border);
+  color: var(--wpsdb-text);
+}
+
+.wpsdb .plugins-themes-table td {
+  border-bottom: 1px solid #eef1f4;
+  vertical-align: middle;
+}
+
+.wpsdb .plugins-themes-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.wpsdb .plugins-themes-table .pt-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.wpsdb .plugins-themes-table .pt-status-upgrade {
+  color: var(--wpsdb-success);
+  background: #ecf8f1;
+  border-color: #b8e2ca;
+}
+
+.wpsdb .plugins-themes-table .pt-status-downgrade {
+  color: var(--wpsdb-danger);
+  background: #fdeeee;
+  border-color: #f3c2c4;
+}
+
+.wpsdb .plugins-themes-table .pt-status-same {
+  color: #3c434a;
+  background: #f1f2f3;
+  border-color: #d8dde3;
+}
+
+.wpsdb .plugins-themes-table .pt-status-missing-target,
+.wpsdb .plugins-themes-table .pt-status-missing-source {
+  color: var(--wpsdb-warning);
+  background: #fff7e6;
+  border-color: #efd9a8;
+}
+
+.progress-content {
+  border-radius: 8px;
+  border: 1px solid var(--wpsdb-border);
+}
+
+.progress-content .progress-bar {
+  background: #2271b1;
+  background-image: none;
+  border-radius: 4px;
+}
+
+/* Status badge alignment fix */
+.wpsdb .plugins-themes-table td.pt-status {
+  vertical-align: middle;
+  background: transparent;
+  border-radius: 0;
+  border: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  margin-top: 0;
+  padding: 6px 8px;
+}
+
+.wpsdb .plugins-themes-table td.pt-status,
+.wpsdb .plugins-themes-table .pt-status {
+  display: table-cell;
+}
+
+.wpsdb .plugins-themes-table .pt-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.wpsdb .plugins-themes-table .pt-status-badge.pt-status-upgrade {
+  color: var(--wpsdb-success);
+  background: #ecf8f1;
+  border-color: #b8e2ca;
+}
+
+.wpsdb .plugins-themes-table .pt-status-badge.pt-status-downgrade {
+  color: var(--wpsdb-danger);
+  background: #fdeeee;
+  border-color: #f3c2c4;
+}
+
+.wpsdb .plugins-themes-table .pt-status-badge.pt-status-same {
+  color: #3c434a;
+  background: #f1f2f3;
+  border-color: #d8dde3;
+}
+
+.wpsdb .plugins-themes-table .pt-status-badge.pt-status-missing-target,
+.wpsdb .plugins-themes-table .pt-status-badge.pt-status-missing-source {
+  color: var(--wpsdb-warning);
+  background: #fff7e6;
+  border-color: #efd9a8;
+}

@@ -167,7 +167,7 @@ var migrate_plugins_themes_recursive;
       row.append('<td class="pt-name">' + name + '<div class="pt-slug">' + key + '</div></td>');
       row.append('<td>' + (local_item ? normalize_version(local_item.version) : '—') + '</td>');
       row.append('<td>' + (remote_item ? normalize_version(remote_item.version) : '—') + '</td>');
-      row.append('<td class="pt-status ' + status.klass + '">' + status.label + '</td>');
+      row.append('<td class="pt-status"><span class="pt-status-badge ' + status.klass + '">' + status.label + '</span></td>');
 
       tbody.append(row);
     });
