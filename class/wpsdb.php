@@ -585,12 +585,14 @@ class WPSDB extends WPSDB_Base {
   function finalize_migration() {
     global $wpdb;
 
+    $temp_prefix = stripslashes( $_POST['temp_prefix'] );
     $tables = explode( ',', $_POST['tables'] );
     $temp_tables = array();
     foreach( $tables as $table ) {
-      $temp_prefix = stripslashes( $_POST['temp_prefix'] );
       $temp_tables[] = $temp_prefix . $table;
     }
+    $existing_temp_tables = array_flip( $this->get_tables( 'temp' ) );
+    $missing_temp_tables = array();
 
     $sql = "SET FOREIGN_KEY_CHECKS=0;\n";
 
@@ -604,10 +606,21 @@ class WPSDB extends WPSDB_Base {
     $preserved_options = apply_filters( 'wpsdb_preserved_options', $preserved_options );
 
     foreach ( $temp_tables as $table ) {
+      if ( ! isset( $existing_temp_tables[ $table ] ) ) {
+        $missing_temp_tables[] = $table;
+        continue;
+      }
       $sql .= 'DROP TABLE IF EXISTS ' . $this->backquote( substr( $table, strlen( $temp_prefix ) ) ) . ';';
       $sql .= "\n";
       $sql .= 'RENAME TABLE ' . $this->backquote( $table )  . ' TO ' . $this->backquote( substr( $table, strlen( $temp_prefix ) ) ) . ';';
       $sql .= "\n";
+    }
+
+    if ( ! empty( $missing_temp_tables ) ) {
+      $this->log_error(
+        'Skipping missing temporary tables during finalize_migration.',
+        array( 'missing_temp_tables' => $missing_temp_tables )
+      );
     }
 
     $preserved_options_data = $wpdb->get_results( sprintf( "SELECT * FROM %soptions WHERE `option_name` IN ('%s')", $wpdb->prefix, implode( "','", $preserved_options ) ), ARRAY_A );
@@ -1665,6 +1678,7 @@ class WPSDB extends WPSDB_Base {
       }
 
       $create_table[0][1] = str_replace( 'TYPE=', 'ENGINE=', $create_table[0][1] );
+      $create_table[0][1] = $this->normalize_create_table_query( $create_table[0][1] );
 
       $alter_table_query = '';
       $create_table[0][1] = $this->process_sql_constraint( $create_table[0][1], $table, $alter_table_query );
@@ -2004,6 +2018,21 @@ class WPSDB extends WPSDB_Base {
   function table_is( $desired_table, $given_table ) {
     global $wpdb;
     return ( $wpdb->{$desired_table} == $given_table || preg_match( '/' . $wpdb->prefix . '[0-9]+_' . $desired_table . '/', $given_table ) );
+  }
+
+  function normalize_create_table_query( $create_query ) {
+    $normalized_query = $create_query;
+
+    // MySQL and MariaDB diverge on supported collations, so strip explicit
+    // COLLATE declarations and let the destination server pick a compatible one.
+    $normalized_query = preg_replace( '/\s+COLLATE\s*=\s*[^\s]+/i', '', $normalized_query );
+    $normalized_query = preg_replace( '/\s+COLLATE\s+[^\s,]+/i', '', $normalized_query );
+
+    // MySQL 8 handles utf8mb4 consistently, while MariaDB may emit utf8mb3.
+    $normalized_query = preg_replace( '/CHARSET=utf8mb3\b/i', 'CHARSET=utf8mb4', $normalized_query );
+    $normalized_query = preg_replace( '/DEFAULT CHARSET=utf8mb3\b/i', 'DEFAULT CHARSET=utf8mb4', $normalized_query );
+
+    return $normalized_query;
   }
 
   /**
