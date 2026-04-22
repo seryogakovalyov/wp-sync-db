@@ -299,7 +299,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 			);
 			$data['sig'] = $this->create_signature( $data, $_POST['key'] );
 			$ajax_url = trailingslashit( $_POST['url'] ) . 'wp-admin/admin-ajax.php';
-			$timeout = apply_filters( 'wpsdb_prepare_remote_connection_timeout', 10 );
+			$timeout = apply_filters( 'wpsdb_plugins_themes_migrate_files_timeout', 300 );
 			$response = $this->remote_post( $ajax_url, $data, __FUNCTION__, compact( 'timeout' ), true );
 
 			if ( false === $response ) {
@@ -356,7 +356,7 @@ class WPSDB_Plugins_Themes extends WPSDB_Base {
 		);
 		$data['sig'] = $this->create_signature( $sig_data, $_POST['key'] );
 		$ajax_url = trailingslashit( $_POST['url'] ) . 'wp-admin/admin-ajax.php';
-		$timeout = apply_filters( 'wpsdb_prepare_remote_connection_timeout', 10 );
+		$timeout = apply_filters( 'wpsdb_plugins_themes_migrate_files_timeout', 300 );
 		$response = $this->remote_post( $ajax_url, $data, __FUNCTION__, compact( 'timeout' ), true );
 
 		if ( false === $response ) {
