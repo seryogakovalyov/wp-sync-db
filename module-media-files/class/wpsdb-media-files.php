@@ -430,6 +430,11 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 				if( ! isset( $site_a_media[$attachment['file']] ) ) {
 					$this->add_files_to_migrate( $attachment, $site_b_media );
 				}
+				// The dates match after every DB migration, so a file replaced under the same name
+				// (e.g. a re-encoded video) is only noticed by its size.
+				elseif( isset( $site_b_media[$attachment['file']] ) && (int) $site_a_media[$attachment['file']] !== (int) $site_b_media[$attachment['file']] ) {
+					$this->add_files_to_migrate( $attachment, $site_b_media );
+				}
 				else {
 					$this->maybe_add_resized_images( $attachment, $site_b_media, $site_a_media );
 				}
