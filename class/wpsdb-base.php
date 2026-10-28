@@ -257,8 +257,9 @@ class WPSDB_Base {
 			$error .= "Attempted to connect to: " . $this->attempting_to_connect_to . "\n\n";
 		}
 		if( $additional_error_var !== false ){
-			$error .= print_r( $additional_error_var, true ) . "\n\n";
+			$error .= print_r( $this->redact_log_data( $additional_error_var ), true ) . "\n\n";
 		}
+		$error = $this->redact_secret_keys( $error );
 		$log = get_option( 'wpsdb_error_log' );
 		if( $log ) {
 			$log = $log . $error;
@@ -267,6 +268,53 @@ class WPSDB_Base {
 			$log = $error;
 		}
 		update_option( 'wpsdb_error_log', $log );
+	}
+
+	// Masks fields that carry the secret key (directly or inside the serialized migration form)
+	function redact_log_data( $data ) {
+		if ( ! is_array( $data ) ) {
+			return $data;
+		}
+
+		$sensitive_fields = array( 'key', 'sig', 'connection_info' );
+
+		foreach ( $data as $field => $value ) {
+			if ( in_array( $field, $sensitive_fields, true ) ) {
+				$data[ $field ] = '[REDACTED]';
+			}
+			elseif ( 'form_data' === $field && is_string( $value ) ) {
+				parse_str( $value, $form_data );
+				$data[ $field ] = http_build_query( $this->redact_log_data( $form_data ) );
+			}
+			elseif ( is_array( $value ) ) {
+				$data[ $field ] = $this->redact_log_data( $value );
+			}
+		}
+
+		return $data;
+	}
+
+	// Last line of defence: removes any known secret key from the final log text, whatever structure it came from
+	function redact_secret_keys( $text ) {
+		$keys = array();
+		if ( ! empty( $this->settings['key'] ) ) {
+			$keys[] = $this->settings['key'];
+		}
+		if ( ! empty( $_POST['key'] ) && is_string( $_POST['key'] ) ) {
+			$keys[] = $_POST['key'];
+			$keys[] = stripslashes( $_POST['key'] );
+		}
+
+		$search = array();
+		foreach ( array_unique( $keys ) as $key ) {
+			$search[] = $key;
+			$search[] = urlencode( $key );
+			$search[] = rawurlencode( $key );
+			$search[] = str_replace( '/', '\/', $key ); // as it appears inside JSON
+		}
+		$search = array_unique( array_filter( $search ) );
+
+		return str_replace( $search, '[REDACTED]', $text );
 	}
 
 	function display_errors() {
