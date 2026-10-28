@@ -116,17 +116,12 @@ var execute_next_step;
       " "));
   }
 
-  function maybe_show_ssl_warning(url, key, remote_scheme) {
-    var scheme = url.substr(0, url.indexOf(':'));
-    if (remote_scheme != scheme && url.indexOf('https') != -1) {
+  // Plain http is only used when the user entered an http:// URL themselves, warn that data goes unencrypted
+  function maybe_show_ssl_warning(url) {
+    show_ssl_notice = /^http:\/\//i.test($.trim(url));
+    if (show_ssl_notice) {
       $('.ssl-notice').show();
-      show_ssl_notice = true;
-      url = url.replace('https', 'http');
-      $('.pull-push-connection-info').val(url + "\n" + key);
-      return;
     }
-    show_ssl_notice = false;
-    return;
   }
 
   function maybe_show_version_warning(plugin_version, url) {
@@ -405,8 +400,7 @@ var execute_next_step;
             return;
           }
 
-          maybe_show_ssl_warning(connection_info[0], connection_info[1],
-            data.scheme);
+          maybe_show_ssl_warning(connection_info[0]);
           maybe_show_version_warning(data.plugin_version, connection_info[
             0]);
           maybe_show_prefix_notice(data.prefix);
@@ -2188,8 +2182,7 @@ var execute_next_step;
           $('.connection-status').hide();
           $('.step-two').show();
 
-          maybe_show_ssl_warning(connection_info[0], connection_info[1],
-            data.scheme);
+          maybe_show_ssl_warning(connection_info[0]);
           maybe_show_version_warning(data.plugin_version, connection_info[
             0]);
           maybe_show_prefix_notice(data.prefix);

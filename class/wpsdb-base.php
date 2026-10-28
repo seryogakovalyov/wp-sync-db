@@ -86,19 +86,6 @@ class WPSDB_Base {
 	function remote_post( $url, $data, $scope, $args = array(), $expecting_serial = false ) {
 		$this->set_time_limit();
 
-		if( function_exists( 'fsockopen' ) && strpos( $url, 'https://' ) === 0 && $scope == 'ajax_verify_connection_to_remote_site' ) {
-			$url_parts = parse_url( $url );
-			$host = $url_parts['host'];
-			if( $pf = @fsockopen( $host, 443, $err, $err_string, 1 ) ) {
-				// worked
-				fclose( $pf );
-			}
-			else {
-				// failed
-				$url = substr_replace( $url, 'http', 0, 5 );
-			}
-		}
-
 		$sslverify = ( $this->settings['verify_ssl'] == 1 ? true : false );
 
 		$default_remote_post_timeout = apply_filters( 'wpsdb_default_remote_post_timeout', 60 * 20 );
@@ -125,10 +112,7 @@ class WPSDB_Base {
 		}
 
 		if ( is_wp_error( $response ) ) {
-			if( strpos( $url, 'https://' ) === 0 && $scope == 'ajax_verify_connection_to_remote_site' ) {
-				return $this->retry_remote_post( $url, $data, $scope, $args, $expecting_serial );
-			}
-			else if( isset( $response->errors['http_request_failed'][0] ) && strstr( $response->errors['http_request_failed'][0], 'timed out' ) ) {
+			if( isset( $response->errors['http_request_failed'][0] ) && strstr( $response->errors['http_request_failed'][0], 'timed out' ) ) {
 				$this->error = sprintf( __( 'The connection to the remote server has timed out, no changes have been committed. (#134 - scope: %s)', 'wp-sync-db' ), $scope );
 			}
 			else if ( isset( $response->errors['http_request_failed'][0] ) && ( strstr( $response->errors['http_request_failed'][0], 'Could not resolve host' ) || strstr( $response->errors['http_request_failed'][0], 'couldn\'t connect to host' ) ) ) {
@@ -144,6 +128,10 @@ class WPSDB_Base {
 					}
 				}
 			}
+			// Never fall back to plain http on our own: the user has to switch the URL to http:// explicitly
+			else if ( strpos( $url, 'https://' ) === 0 ) {
+				$this->error = sprintf( __( 'Could not connect to the remote site over HTTPS: %1$s. No changes have been committed. If the remote site does not support HTTPS and you accept that your data will be transmitted unencrypted, change https:// to http:// in the first line of the connection info. (#139 - scope: %2$s)', 'wp-sync-db' ), esc_html( $response->get_error_message() ), $scope );
+			}
 			else {
 				$this->error = sprintf( __( 'The connection failed, an unexpected error occurred, please contact support. (#121 - scope: %s)', 'wp-sync-db' ), $scope );
 			}
@@ -151,10 +139,7 @@ class WPSDB_Base {
 			return false;
 		}
 		elseif ( (int) $response['response']['code'] < 200 || (int) $response['response']['code'] > 399 ) {
-			if( strpos( $url, 'https://' ) === 0 && $scope == 'ajax_verify_connection_to_remote_site' ) {
-				return $this->retry_remote_post( $url, $data, $scope, $args, $expecting_serial );
-			}
-			else if( $response['response']['code'] == '401' ) {
+			if( $response['response']['code'] == '401' ) {
 				$this->error = __( 'The remote site is protected with Basic Authentication. Please enter the username and password above to continue. (401 Unauthorized)', 'wp-sync-db' );
 				$this->log_error( $this->error, $response );
 				return false;
@@ -166,37 +151,17 @@ class WPSDB_Base {
 			}
 		}
 		elseif ( $expecting_serial && $this->is_json( $response['body'], true ) == false ) {
-			if( strpos( $url, 'https://' ) === 0 && $scope == 'ajax_verify_connection_to_remote_site' ) {
-				return $this->retry_remote_post( $url, $data, $scope, $args, $expecting_serial );
-			}
 			$this->error = __( 'There was a problem with the AJAX request, we were expecting a JSON response, instead we received:<br />', 'wp-sync-db' ) . htmlentities( $response['body'] );
 			$this->log_error( $this->error, $response );
 			return false;
 		}
 		elseif ( $response['body'] === '0' ) {
-			if( strpos( $url, 'https://' ) === 0 && $scope == 'ajax_verify_connection_to_remote_site' ) {
-				return $this->retry_remote_post( $url, $data, $scope, $args, $expecting_serial );
-			}
 			$this->error = sprintf( __( 'WP Sync DB does not seem to be installed or active on the remote site. (#131 - scope: %s)', 'wp-sync-db' ), $scope );
 			$this->log_error( $this->error, $response );
 			return false;
 		}
-		elseif ( $expecting_serial && $this->is_json( $response['body'], true ) == true && $scope == 'ajax_verify_connection_to_remote_site' ) {
-			$decoded_response = json_decode( $response['body'], true );
-			if ( isset( $decoded_response['error'] ) && '1' == $decoded_response['error'] && strpos( $url, 'https://' ) === 0 ) {
-				return $this->retry_remote_post( $url, $data, $scope, $args, $expecting_serial );
-			}
-		}
 
 		return $response['body'];
-	}
-
-	function retry_remote_post( $url, $data, $scope, $args = array(), $expecting_serial = false ) {
-		$url = substr_replace( $url, 'http', 0, 5 );
-		if( $response = $this->remote_post( $url, $data, $scope, $args, $expecting_serial ) ) {
-			return $response;
-		}
-		return false;
 	}
 
 	function array_to_multipart( $data ) {

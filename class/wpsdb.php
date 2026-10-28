@@ -1168,7 +1168,7 @@ class WPSDB extends WPSDB_Base {
     $this->check_ajax_referer( 'reset-api-key' );
     $this->settings['key'] = $this->generate_key();
     update_option( 'wpsdb_settings', $this->settings );
-    $result = $this->end_ajax( sprintf( "%s\n%s", site_url( '', 'https' ), $this->settings['key'] ) );
+    $result = $this->end_ajax( sprintf( "%s\n%s", $this->get_connection_info_url(), $this->settings['key'] ) );
     return $result;
   }
 
@@ -1285,6 +1285,12 @@ class WPSDB extends WPSDB_Base {
     $size *= 1024;
     return size_format( $size );
   }
+  // Advertise https unless the site is on plain http only (then the remote side warns about an unencrypted connection)
+  function get_connection_info_url() {
+    $scheme = ( is_ssl() || 'https' === parse_url( get_option( 'siteurl' ), PHP_URL_SCHEME ) ) ? 'https' : 'http';
+    return site_url( '', $scheme );
+  }
+
   // Generates our secret key
   function generate_key() {
     $keyset = 'abcdefghijklmnopqrstuvqxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/';
@@ -2466,7 +2472,7 @@ class WPSDB extends WPSDB_Base {
 
     ?>
     <script type='text/javascript'>
-      var wpsdb_connection_info = <?php echo json_encode( array( site_url( '', 'https' ), $this->settings['key'] ) ); ?>;
+      var wpsdb_connection_info = <?php echo json_encode( array( $this->get_connection_info_url(), $this->settings['key'] ) ); ?>;
       var wpsdb_this_url = '<?php echo addslashes( home_url() ) ?>';
       var wpsdb_this_path = '<?php echo addslashes( $this->absolute_root_file_path ); ?>';
       var wpsdb_this_domain = '<?php echo $this->get_domain_current_site(); ?>';

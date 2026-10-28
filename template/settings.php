@@ -1,7 +1,7 @@
 <div class="settings-tab content-tab">
 
 	<?php
-		$connection_info = sprintf( "%s\r%s", site_url( '', 'https' ), $this->settings['key'] );
+		$connection_info = sprintf( "%s\r%s", $this->get_connection_info_url(), $this->settings['key'] );
 		$pull_checked = ( $this->settings['allow_pull'] ? ' checked="checked"' : '' );
 		$push_checked = ( $this->settings['allow_push'] ? ' checked="checked"' : '' );
 		$verify_ssl_checked = ( $this->settings['verify_ssl'] ? ' checked="checked"' : '' );

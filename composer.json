@@ -36,7 +36,7 @@
   "scripts": {
     "test": "./test.sh"
   },
-  "version": "1.8.10",
+  "version": "1.8.11",
   "config": {
     "allow-plugins": {
       "composer/installers": true

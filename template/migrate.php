@@ -117,7 +117,7 @@ $loaded_profile = wp_parse_args( $loaded_profile, $this->checkbox_options );
 			</div>
 
 			<div class="notification-message warning-notice ssl-notice inline-message">
-				<strong><?php _e( 'SSL Disabled', 'wp-sync-db' ); ?></strong> &mdash; <?php _e( 'We couldn\'t connect over SSL but regular http (no SSL) appears to be working so we\'ve switched to that. If you run a push or pull, your data will be transmitted unencrypted. Most people are fine with this, but just a heads up.', 'wp-sync-db' ); ?>
+				<strong><?php _e( 'Unencrypted Connection', 'wp-sync-db' ); ?></strong> &mdash; <?php _e( 'The remote site URL uses http://, so if you run a push or pull, your data will be transmitted unencrypted. Use https:// if the remote site supports it.', 'wp-sync-db' ); ?>
 			</div>
 
 		</div>

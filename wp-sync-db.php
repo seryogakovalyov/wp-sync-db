@@ -3,7 +3,7 @@
 Plugin Name: WP Sync DB - Plugins & Themes Sync
 Description: Sync database, media, plugins, and themes between WordPress installs.
 Author: Sergey Kovalyov
-Version: 1.8.10
+Version: 1.8.11
 Author URI: https://github.com/seryogakovalyov
 Plugin URI: https://github.com/seryogakovalyov/wp-sync-db
 Network: True
