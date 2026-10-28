@@ -531,8 +531,15 @@ class WPSDB extends WPSDB_Base {
     return $sql;
   }
 
+  // The remote site verifies the signature with its own key, so the key itself is never sent (it is only accepted
+  // in remote_post_elements for requests coming from older versions that still send it).
   function filter_remote_post_data( $data, $endpoint ) {
-    return array_intersect_key( $data, array_flip( $this->remote_post_elements[ $endpoint ] ) );
+    $data = array_intersect_key( $data, array_flip( $this->remote_post_elements[ $endpoint ] ) );
+    unset( $data['key'] );
+    if ( isset( $data['form_data'] ) ) {
+      $data['form_data'] = $this->strip_connection_info( $data['form_data'] );
+    }
+    return $data;
   }
 
   // After table migration, delete old tables and rename new tables removing the temporarily prefix
@@ -562,7 +569,7 @@ class WPSDB extends WPSDB_Base {
       $data['location'] = home_url();
       $data['temp_prefix'] = $this->temp_prefix;
       $data = $this->filter_remote_post_data( $data, 'remote_finalize_migration' );
-      $data['sig'] = $this->create_signature( $data, $data['key'] );
+      $data['sig'] = $this->create_signature( $data, $_POST['key'] );
       $ajax_url = trailingslashit( $_POST['url'] ) . 'wp-admin/admin-ajax.php';
       $response = $this->remote_post( $ajax_url, $data, __FUNCTION__ );
       ob_start();
@@ -777,7 +784,7 @@ class WPSDB extends WPSDB_Base {
         $ajax_url = trailingslashit( $_POST['url'] ) . 'wp-admin/admin-ajax.php';
         $data['primary_keys'] = stripslashes( $data['primary_keys'] );
         $data = $this->filter_remote_post_data( $data, 'backup_remote_table' );
-        $data['sig'] = $this->create_signature( $data, $data['key'] );
+        $data['sig'] = $this->create_signature( $data, $_POST['key'] );
         $response = $this->remote_post( $ajax_url, $data, __FUNCTION__ );
         ob_start();
         $this->display_errors();
@@ -838,7 +845,7 @@ class WPSDB extends WPSDB_Base {
       $ajax_url = trailingslashit( $data['url'] ) . 'wp-admin/admin-ajax.php';
       $data['primary_keys'] = stripslashes( $data['primary_keys'] );
       $data = $this->filter_remote_post_data( $data, 'process_pull_request' );
-      $data['sig'] = $this->create_signature( $data, $data['key'] );
+      $data['sig'] = $this->create_signature( $data, $_POST['key'] );
 
       $response = $this->remote_post( $ajax_url, $data, __FUNCTION__ );
       ob_start();
@@ -1004,7 +1011,7 @@ class WPSDB extends WPSDB_Base {
       $data = array(
         'action'  => 'wpsdb_remote_initiate_migration',
         'intent' => $_POST['intent'],
-        'form_data' => $_POST['form_data'],
+        'form_data' => $this->strip_connection_info( $_POST['form_data'] ),
       );
 
       $data['sig'] = $this->create_signature( $data, $_POST['key'] );
@@ -2568,7 +2575,7 @@ class WPSDB extends WPSDB_Base {
         $data['temp_prefix'] = $this->temp_prefix;
         $ajax_url = trailingslashit( $data['url'] ) . 'wp-admin/admin-ajax.php';
         $data = $this->filter_remote_post_data( $data, 'process_push_migration_cancellation' );
-        $data['sig'] = $this->create_signature( $data, $data['key'] );
+        $data['sig'] = $this->create_signature( $data, $_POST['key'] );
 
         $response = $this->remote_post( $ajax_url, $data, __FUNCTION__ );
         $this->display_errors();

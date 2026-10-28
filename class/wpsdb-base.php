@@ -334,6 +334,24 @@ class WPSDB_Base {
 		return array_intersect_key( $post_array, array_flip( $accepted_elements ) );
 	}
 
+	// Removes connection_info (remote URL + secret key) from the serialized migration form before it is sent to the remote site.
+	// Works on the raw string so the remaining fields stay byte-for-byte identical for signing.
+	function strip_connection_info( $form_data ) {
+		if ( ! is_string( $form_data ) || '' === $form_data ) {
+			return $form_data;
+		}
+
+		$fields = explode( '&', $form_data );
+		foreach ( $fields as $i => $field ) {
+			$name = strstr( $field, '=', true );
+			if ( 'connection_info' === urldecode( false === $name ? $field : $name ) ) {
+				unset( $fields[ $i ] );
+			}
+		}
+
+		return implode( '&', $fields );
+	}
+
 	function create_signature( $data, $key ) {
 		if ( isset( $data['sig'] ) ) {
 			unset( $data['sig'] );
