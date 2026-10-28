@@ -19,6 +19,16 @@ class WPSDB extends WPSDB_Base {
   protected $session_salt;
   protected $primary_keys;
 
+  // Fields each remote endpoint verifies. Requests built from a copy of $_POST must be
+  // reduced to these before signing, otherwise extra fields added by other plugins
+  // (e.g. Polylang's pll_ajax_backend) break the signature on the remote side (#120).
+  protected $remote_post_elements = array(
+    'remote_finalize_migration' => array( 'action', 'intent', 'url', 'key', 'form_data', 'prefix', 'type', 'location', 'tables', 'temp_prefix' ),
+    'backup_remote_table' => array( 'action', 'intent', 'url', 'key', 'table', 'form_data', 'stage', 'bottleneck', 'prefix', 'current_row', 'dump_filename', 'last_table', 'gzip', 'primary_keys', 'path_current_site', 'domain_current_site' ),
+    'process_pull_request' => array( 'action', 'intent', 'url', 'key', 'table', 'form_data', 'stage', 'bottleneck', 'prefix', 'current_row', 'dump_filename', 'pull_limit', 'last_table', 'gzip', 'primary_keys', 'path_current_site', 'domain_current_site' ),
+    'process_push_migration_cancellation' => array( 'action', 'intent', 'url', 'key', 'form_data', 'dump_filename', 'temp_prefix', 'stage' ),
+  );
+
   function __construct( $plugin_file_path ) {
     parent::__construct( $plugin_file_path );
 
@@ -521,6 +531,10 @@ class WPSDB extends WPSDB_Base {
     return $sql;
   }
 
+  function filter_remote_post_data( $data, $endpoint ) {
+    return array_intersect_key( $data, array_flip( $this->remote_post_elements[ $endpoint ] ) );
+  }
+
   // After table migration, delete old tables and rename new tables removing the temporarily prefix
   function ajax_finalize_migration() {
     $this->check_ajax_referer( 'finalize-migration' );
@@ -547,6 +561,7 @@ class WPSDB extends WPSDB_Base {
       $data['type'] = 'push';
       $data['location'] = home_url();
       $data['temp_prefix'] = $this->temp_prefix;
+      $data = $this->filter_remote_post_data( $data, 'remote_finalize_migration' );
       $data['sig'] = $this->create_signature( $data, $data['key'] );
       $ajax_url = trailingslashit( $_POST['url'] ) . 'wp-admin/admin-ajax.php';
       $response = $this->remote_post( $ajax_url, $data, __FUNCTION__ );
@@ -560,7 +575,7 @@ class WPSDB extends WPSDB_Base {
   }
 
   function respond_to_remote_finalize_migration() {
-    $filtered_post = $this->filter_post_elements( $_POST, array( 'action', 'intent', 'url', 'key', 'form_data', 'prefix', 'type', 'location', 'tables', 'temp_prefix' ) );
+    $filtered_post = $this->filter_post_elements( $_POST, $this->remote_post_elements['remote_finalize_migration'] );
     if ( ! $this->verify_signature( $filtered_post, $this->settings['key'] ) ) {
       $return = array();
       $return['error'] = 1;
@@ -761,6 +776,7 @@ class WPSDB extends WPSDB_Base {
         $data['intent'] = 'pull';
         $ajax_url = trailingslashit( $_POST['url'] ) . 'wp-admin/admin-ajax.php';
         $data['primary_keys'] = stripslashes( $data['primary_keys'] );
+        $data = $this->filter_remote_post_data( $data, 'backup_remote_table' );
         $data['sig'] = $this->create_signature( $data, $data['key'] );
         $response = $this->remote_post( $ajax_url, $data, __FUNCTION__ );
         ob_start();
@@ -821,6 +837,7 @@ class WPSDB extends WPSDB_Base {
       }
       $ajax_url = trailingslashit( $data['url'] ) . 'wp-admin/admin-ajax.php';
       $data['primary_keys'] = stripslashes( $data['primary_keys'] );
+      $data = $this->filter_remote_post_data( $data, 'process_pull_request' );
       $data['sig'] = $this->create_signature( $data, $data['key'] );
 
       $response = $this->remote_post( $ajax_url, $data, __FUNCTION__ );
@@ -862,7 +879,7 @@ class WPSDB extends WPSDB_Base {
   }
 
   function respond_to_backup_remote_table() {
-    $filtered_post = $this->filter_post_elements( $_POST, array( 'action', 'intent', 'url', 'key', 'table', 'form_data', 'stage', 'bottleneck', 'prefix', 'current_row', 'dump_filename', 'last_table', 'gzip', 'primary_keys', 'path_current_site', 'domain_current_site' ) );
+    $filtered_post = $this->filter_post_elements( $_POST, $this->remote_post_elements['backup_remote_table'] );
     $filtered_post['primary_keys'] = stripslashes( $filtered_post['primary_keys'] );
     if ( ! $this->verify_signature( $filtered_post, $this->settings['key'] ) ) {
       $error_msg = $this->invalid_content_verification_error . ' (#137)';
@@ -904,7 +921,7 @@ class WPSDB extends WPSDB_Base {
   }
 
   function respond_to_process_pull_request() {
-    $filtered_post = $this->filter_post_elements( $_POST, array( 'action', 'intent', 'url', 'key', 'table', 'form_data', 'stage', 'bottleneck', 'prefix', 'current_row', 'dump_filename', 'pull_limit', 'last_table', 'gzip', 'primary_keys', 'path_current_site', 'domain_current_site' ) );
+    $filtered_post = $this->filter_post_elements( $_POST, $this->remote_post_elements['process_pull_request'] );
 
     // verification will fail unless we strip slashes on primary_keys and form_data
     $filtered_post['primary_keys'] = stripslashes( $filtered_post['primary_keys'] );
@@ -2550,6 +2567,7 @@ class WPSDB extends WPSDB_Base {
         $data['action'] = 'wpsdb_process_push_migration_cancellation';
         $data['temp_prefix'] = $this->temp_prefix;
         $ajax_url = trailingslashit( $data['url'] ) . 'wp-admin/admin-ajax.php';
+        $data = $this->filter_remote_post_data( $data, 'process_push_migration_cancellation' );
         $data['sig'] = $this->create_signature( $data, $data['key'] );
 
         $response = $this->remote_post( $ajax_url, $data, __FUNCTION__ );
@@ -2575,7 +2593,7 @@ class WPSDB extends WPSDB_Base {
   }
 
   function respond_to_process_push_migration_cancellation() {
-    $filtered_post = $this->filter_post_elements( $_POST, array( 'action', 'intent', 'url', 'key', 'form_data', 'dump_filename', 'temp_prefix', 'stage' ) );
+    $filtered_post = $this->filter_post_elements( $_POST, $this->remote_post_elements['process_push_migration_cancellation'] );
     if ( ! $this->verify_signature( $filtered_post, $this->settings['key'] ) ) {
       echo $this->invalid_content_verification_error;
       exit;
