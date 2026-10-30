@@ -422,6 +422,7 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 
 	function media_diff( $site_a_attachments, $site_b_attachments, $site_a_media, $site_b_media ) {
 		foreach( $site_b_attachments as $attachment ) {
+			$this->maybe_add_webp_images( $attachment, $site_b_media, $site_a_media );
 			$local_attachment_key = $this->multidimensional_search( array( 'file' => $attachment['file'] ), $site_a_attachments );
 			if( false === $local_attachment_key ) continue;
 			$remote_timestamp = strtotime( $attachment['date'] );
@@ -441,6 +442,25 @@ class WPSDB_Media_Files extends WPSDB_Addon {
 			}
 			else {
 				$this->add_files_to_migrate( $attachment, $site_b_media );
+			}
+		}
+	}
+
+	// WP-Optimize stores WebP copies beside originals without adding them to attachment metadata.
+	function maybe_add_webp_images( $attachment, $source_media, $destination_media ) {
+		$files = array( $attachment['file'] );
+		if ( ! empty( $attachment['sizes'] ) && ! apply_filters( 'wpsdb_exclude_resized_media', false ) ) {
+			$files = array_merge( $files, $attachment['sizes'] );
+		}
+
+		foreach ( $files as $file ) {
+			// Only allow relative uploads paths; never derive paths from arbitrary directory contents.
+			if ( ! is_string( $file ) || preg_match( '~(^/|[\\\\:\x00-\x1f]|(?:^|/)\.{1,2}(?:/|$))~', $file ) ) continue;
+			if ( ! preg_match( '/\.(?:jpe?g|png)$/i', $file ) ) continue;
+			$webp = $file . '.webp';
+			if ( ! isset( $source_media[$file], $source_media[$webp] ) ) continue;
+			if ( ! isset( $destination_media[$webp] ) || (int) $source_media[$webp] !== (int) $destination_media[$webp] ) {
+				$this->files_to_migrate[$webp] = $source_media[$webp];
 			}
 		}
 	}
